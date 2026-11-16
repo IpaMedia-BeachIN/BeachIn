@@ -51,6 +51,23 @@ export async function eliminaRuolo(id: string) {
   return count === 0 ? 'Ruolo di sistema o ancora assegnato a qualche utente' : null
 }
 
+/** Notifiche push staff (migrazione 0035): tipi per ruolo, eccezione per utente, telefoni iscritti. */
+export async function salvaNotificheRuolo(id: string, notifiche: Record<string, boolean>) {
+  if (!supabase) return 'Serve il database (Supabase).'
+  const { error } = await supabase.from('ruoli').update({ notifiche }).eq('id', id)
+  return msg(error)
+}
+export async function impostaNotificheUtente(id: string, notifiche: boolean | null) {
+  if (!supabase) return 'Serve il database (Supabase).'
+  const { error } = await supabase.rpc('imposta_notifiche_utente', { p_id: id, p_notifiche: notifiche })
+  return msg(error)
+}
+export async function leggiDispositiviPush(): Promise<Record<string, number>> {
+  if (!supabase) return {}
+  const { data } = await supabase.rpc('dispositivi_push')
+  return Object.fromEntries(((data ?? []) as { utente_id: string; dispositivi: number }[]).map((r) => [r.utente_id, r.dispositivi]))
+}
+
 /** id leggibile da un nome ("Capo sala" → "capo-sala"). */
 export const idDaNome = (nome: string) =>
   nome.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `ruolo-${Date.now()}`

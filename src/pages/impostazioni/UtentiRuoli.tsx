@@ -14,6 +14,7 @@ import {
 } from '@/lib/utenti'
 import { cn } from '@/lib/cn'
 import { funzioniDi } from '@/config/moduli'
+import NotificheStaff from './NotificheStaff'
 
 const campo = 'h-10 w-full rounded-xl border border-calce-200 bg-white px-3 text-sm focus-visible:focus-ring'
 const quando = (d: string | null) =>
@@ -81,6 +82,7 @@ export default function UtentiRuoli() {
       )}
       <ElencoUtenti utenti={utenti} ruoli={ruoli} io={profilo?.id} modifica={modifica} esegui={esegui} />
       <MatricePermessi ruoli={ruoli} utenti={utenti} modifica={modifica} esegui={esegui} />
+      <NotificheStaff ruoli={ruoli} utenti={utenti} modifica={modifica} esegui={esegui} />
     </div>
   )
 }
