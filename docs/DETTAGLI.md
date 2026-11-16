@@ -178,6 +178,11 @@ Personale, **Eventi**, **Sito** (gestionale) + **SitoAnteprima** (sito pubblico)
   `beachin_vapid_private`, mai nel repo). Iscrizioni in `beachin.push_iscrizioni` (non leggibile da anon, scrittura via RPC
   `beachin.registra_push`). Trigger `notifica_nuova_richiesta` su `richieste_ristorante` → `pg_net` → Edge Function
   `beachin-push` (`supabase/functions/beachin-push`, legge DB via `SUPABASE_DB_URL`, rimuove iscrizioni 404/410).
+  Migrazione 0035: notifiche staff **per ruolo con eccezione per utente** (Impostazioni → Utenti e ruoli → card
+  "Notifiche staff", `src/pages/impostazioni/NotificheStaff.tsx`): `ruoli.notifiche` jsonb per tipo (richiesta/ombrellone/
+  evento/cliente, assente = sì), `utenti.notifiche` (null = ruolo, true/false), `push_iscrizioni.utente_id` (da `auth.uid()`
+  in `registra_push`; l'app staff ricollega il telefono a ogni accesso con `ricollegaPush`). La funzione legge i destinatari
+  da `beachin.iscrizioni_push(app, tipo)`; iscrizioni admin senza utente non ricevono nulla.
   Migrazione 0025: stessa funzione `notifica_nuova_richiesta(tipo)` anche per `prenotazioni_online` (tabella nuova: prenotazioni ombrellone dal
   sito, prima solo locali; i dati seminati `PO-01…` non notificano) e `richieste_eventi` (non quelle `origine = manuale`) → tipi `ombrellone`/`evento`.
   Tocco notifica con app aperta → SW `postMessage({tipo:"aggiorna"})` → reload; `useSyncSupabase` rilegge anche su visibilitychange/online/pageshow e alla (ri)sottoscrizione del canale (app sospesa su telefono = canale live caduto).

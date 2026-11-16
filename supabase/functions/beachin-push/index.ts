@@ -4,6 +4,7 @@
 // - tipo "cliente" (azione_ts su richieste_ristorante / richieste_eventi): il cliente ha modificato o annullato dal suo link → app admin
 // - tipo "notizia" (insert su beachin.notizie, anche con evento collegato) e "lavagnetta" (pubblicata, riga
 //   lavagnetta_pubblicata di beachin.sito_contenuti) → app clienti
+// Destinatari da beachin.iscrizioni_push (migrazione 0035): staff filtrato per ruolo ed eccezione del singolo utente.
 // Chiave privata VAPID nel Vault di Supabase (segreto `beachin_vapid_private`), mai nel repository.
 import webpush from 'npm:web-push@3.6.7'
 import postgres from 'npm:postgres@3.4.5'
@@ -42,7 +43,7 @@ Deno.serve(async (req) => {
     const [{ segreto }] = await sql`select decrypted_secret as segreto from vault.decrypted_secrets where name = 'beachin_vapid_private'`
     webpush.setVapidDetails('https://loriscuba.github.io/BeachIn/', VAPID_PUBBLICA, segreto)
 
-    const iscrizioni = await sql`select endpoint, p256dh, auth, url from beachin.push_iscrizioni where app = ${app}`
+    const iscrizioni = await sql`select endpoint, p256dh, auth, url from beachin.iscrizioni_push(${app}, ${tipo})`
     let inviate = 0
     for (const s of iscrizioni) {
       const payload = JSON.stringify({ ...messaggio, url: s.url, app, sez: tipo === 'lavagnetta' ? 'lavagna' : tipo === 'notizia' ? 'news' : undefined })

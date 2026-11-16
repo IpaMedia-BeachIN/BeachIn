@@ -5,7 +5,7 @@ import { Sidebar } from './Sidebar'
 import { BarraRapida } from './BarraRapida'
 import { MenuGriglia } from './MenuGriglia'
 import { useSchedeRapide } from '@/hooks/useNavStaff'
-import { attivaCacheApp, impostaManifest } from '@/lib/notifichePush'
+import { attivaCacheApp, impostaManifest, ricollegaPush } from '@/lib/notifichePush'
 import { precaricaPagine } from '@/lib/precarica'
 import { Topbar } from './Topbar'
 import { NotificheProvider } from '@/context/NotificheContext'
@@ -50,6 +50,7 @@ export function AppShell() {
   const { profilo, caricamento, esci } = useSessione()
   // una sola app da installare (manifest unico) e apertura istantanea con la cache del service worker
   useEffect(() => { impostaManifest('staff.webmanifest', 'admin-icon-192.png', 'BeachIn'); attivaCacheApp() }, [])
+  useEffect(() => { if (profilo?.id) void ricollegaPush().catch(() => undefined) }, [profilo?.id])
   if (caricamento) return <Caricamento />
   if (!profilo) {
     return (

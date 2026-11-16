@@ -56,6 +56,21 @@ export async function attivaPush(app: AppPush = 'admin'): Promise<StatoPush> {
   return 'attivo'
 }
 
+/**
+ * App staff, dopo l'accesso: se il telefono è già iscritto, ricollega l'iscrizione all'utente collegato
+ * (serve per le notifiche per ruolo/utente, migrazione 0035). Silenziosa: non chiede permessi.
+ */
+export async function ricollegaPush() {
+  if (!supabase || !('serviceWorker' in navigator) || !('Notification' in window) || Notification.permission !== 'granted') return
+  const reg = await navigator.serviceWorker.getRegistration(import.meta.env.BASE_URL)
+  const sub = await reg?.pushManager.getSubscription()
+  if (!sub) return
+  const j = sub.toJSON()
+  await supabase.rpc('registra_push', {
+    p_endpoint: sub.endpoint, p_p256dh: j.keys?.p256dh ?? '', p_auth: j.keys?.auth ?? '', p_url: window.location.href, p_app: 'admin',
+  })
+}
+
 /** Collega manifest e meta iOS alla pagina corrente (sostituisce quelli di un'altra app già aperta). */
 export function impostaManifest(manifest: string, icona: string, titolo: string) {
   const base = import.meta.env.BASE_URL

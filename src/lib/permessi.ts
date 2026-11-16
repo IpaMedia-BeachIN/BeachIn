@@ -55,6 +55,8 @@ export interface Ruolo {
   permessi: Permessi
   amministratore: boolean
   di_sistema: boolean
+  /** Tipi di notifica push ricevuti (assente = sì), migrazione 0035. */
+  notifiche?: Record<string, boolean>
 }
 
 export interface Utente {
@@ -67,6 +69,8 @@ export interface Utente {
   attivo: boolean
   creato_il: string
   ultimo_accesso: string | null
+  /** null = come il ruolo, true = tutte, false = nessuna. */
+  notifiche?: boolean | null
 }
 
 /** Sezione di permesso di un modulo (Panoramica = sempre; l'assistente vocale sta nel Ristorante). */
