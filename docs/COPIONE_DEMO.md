@@ -3,7 +3,7 @@
 Da fare **il giorno prima della demo**, sulla stessa rete Wi-Fi che avrai dal cliente.
 Tempo: circa 45 minuti. Spunta ogni casella; se qualcosa non va, segnalo in `APPUNTI.md`.
 
-Indirizzo base: https://loriscuba.github.io/BeachIn/ (le pagine sono `#/percorso`).
+Indirizzo base: https://ipamedia-beachin.github.io/BeachIn/ (le pagine sono `#/percorso`).
 
 ## 0. Preparazione (5 min)
 - [ ] **Portatile** (gestionale) a schermo intero, zoom del browser al 100%.

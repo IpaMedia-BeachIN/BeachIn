@@ -75,7 +75,7 @@ gestire chiavi e costi.
 - Si aggiorna **solo** dal workflow manuale **Deploy** su GitHub (ambiente `produzione`, va approvato); `rollback` rimette il web precedente.
 - [ ] **Deploy in produzione SOSPESO** (21/10/2026): il workflow Deploy salta la produzione finché la variabile di repository
   `PRODUZIONE_ATTIVA` non vale `si` (Settings → Secrets and variables → Actions → Variables). Riattivare quando si riparte.
-- Solo demo (Supabase Demo, si aggiornano da soli a ogni merge su `main`): https://beachin.pages.dev/ e https://loriscuba.github.io/BeachIn/
+- Solo demo (Supabase Demo, si aggiornano da soli a ogni merge su `main`): https://beachin.pages.dev/ e https://ipamedia-beachin.github.io/BeachIn/
 - [x] Login sul gestionale (solo lato app, stesse credenziali dell'app admin)
 - [ ] **Prima della produzione**: login vero con Supabase Auth (gestore) e policy DB che lasciano ad anon solo le azioni dei clienti
   (leggere menu/news/lavagna, inviare ordini e prenotazioni). Oggi credenziali nel codice e tabelle scrivibili da chiunque.
@@ -94,7 +94,7 @@ gestire chiavi e costi.
   menu iniziale. In produzione serve un database (es. Supabase) da cui leggono gestionale e `/menu`.
 - [ ] **Traduzioni**: oggi servizio gratuito MyMemory (limite ~5.000 caratteri/giorno) + glossario di riserva.
   In produzione: DeepL/Google o un LLM lato server (stessa funzione `traduciNome` in `src/lib/menuLingue.ts`).
-- Deploy: GitHub Pages parte a ogni merge su `main` → https://loriscuba.github.io/BeachIn/
+- Deploy: GitHub Pages parte a ogni merge su `main` → https://ipamedia-beachin.github.io/BeachIn/
 - [ ] Dominio del cliente (es. lidodeipini.it?) da collegare a Pages o Vercel
 - [ ] Oggi i dati sono in memoria (demo): per l'uso reale servono database e login per il gestionale
 - [ ] Email vere per le prenotazioni (oggi la "posta" è simulata dentro l'app)

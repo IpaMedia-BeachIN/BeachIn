@@ -23,8 +23,9 @@ BeachIn è l'**aggregatore di moduli**.
   Segreti (VAPID privata, `GROQ_API_KEY`) mai nel repo.
 
 ## Deploy e anteprima
-- **GitHub Pages** — https://loriscuba.github.io/BeachIn/ (`.github/workflows/pages.yml`, `VITE_BASE=/BeachIn/` + HashRouter).
+- **GitHub Pages** — https://ipamedia-beachin.github.io/BeachIn/ (`.github/workflows/pages.yml`, `VITE_BASE=/BeachIn/` + HashRouter).
 - **Cloudflare Pages** — https://beachin.pages.dev/ (indirizzo pubblico delle app admin/clienti; build `npm run build`, output `dist` da `wrangler.toml`, BrowserRouter).
+- **Cloudflare Worker** (in preparazione) — `wrangler.jsonc`: `*.beachin.ipamedia.it` da `main`, `test.beachin.ipamedia.it` da `test` (dettagli in `docs/DETTAGLI.md`).
 - **Vercel** — anteprima per branch (BrowserRouter, `vercel.json` con rewrite SPA).
 - **Produzione** — VM Oracle prod-web https://158-178-144-127.sslip.io + Supabase self-hosted su VM prod-db, solo da workflow manuale "Deploy".
 - **Artifact** — https://claude.ai/artifact/PqRRUL2ws33iz2m9qn99nV (ripubblicare sullo stesso URL;

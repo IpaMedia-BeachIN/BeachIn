@@ -11,7 +11,7 @@ const chiave = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
 export const SCHEMA = 'beachin'
 
 // Sessione Auth solo per lo staff del gestionale (utenti e ruoli, migrazione 0011), in una chiave tutta sua:
-// su loriscuba.github.io altre demo dello stesso progetto Supabase salvano il loro login nello stesso localStorage
+// su ipamedia-beachin.github.io altre demo dello stesso progetto Supabase salvano il loro login nello stesso localStorage
 // con la chiave predefinita, e supabase-js lo riusava facendo partire le richieste come `authenticated`.
 // Senza login le richieste restano `anon` (sito, ComandApp, menu QR).
 export const supabase = url && chiave

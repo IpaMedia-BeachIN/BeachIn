@@ -1,0 +1,35 @@
+// Cloudflare Worker "beachin" con file statici (build Vite in ./dist).
+// Piano infrastruttura IpaMedia: un Worker per prodotto, un sottodominio per cliente.
+//   ramo main  → *.beachin.ipamedia.it (clienti, Supabase produzione)
+//   ramo test  → test.beachin.ipamedia.it (ambiente "test", Supabase demo)
+// Le PR hanno l'anteprima automatica su workers.dev.
+//
+// VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY si leggono in fase di build (Vite), non a runtime:
+// vanno messe come "Build variables" in Workers Builds, diverse per main e per test.
+//   main: build `npm run build`, deploy `npx wrangler deploy`
+//   test: build `npm run build`, deploy `npx wrangler deploy --env test` (Worker "beachin-test")
+//
+// wrangler.toml resta per Cloudflare Pages (https://beachin.pages.dev) finché non si spegne.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "beachin",
+  "compatibility_date": "2026-01-01",
+  "assets": {
+    "directory": "./dist",
+    // SPA (BrowserRouter): i percorsi sconosciuti tornano a index.html.
+    // /comandapp viene servito da dist/comandapp.html (anteprime link) grazie a html_handling.
+    "not_found_handling": "single-page-application",
+    "html_handling": "auto-trailing-slash"
+  },
+  "routes": [
+    { "pattern": "*.beachin.ipamedia.it/*", "zone_name": "ipamedia.it" },
+    { "pattern": "beachin.ipamedia.it/*", "zone_name": "ipamedia.it" }
+  ],
+  "env": {
+    "test": {
+      "routes": [
+        { "pattern": "test.beachin.ipamedia.it/*", "zone_name": "ipamedia.it" }
+      ]
+    }
+  }
+}

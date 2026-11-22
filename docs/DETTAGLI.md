@@ -687,6 +687,16 @@ Personale, **Eventi**, **Sito** (gestionale) + **SitoAnteprima** (sito pubblico)
   - `demo`: Variables `SUPABASE_PROJECT_REF`; Secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_URL` (Session pooler IPv4).
 - I trigger push (`notifica_nuova_richiesta`) ed email (`email_richiesta`) leggono URL funzioni e chiave anon dal Vault: senza segreti non invia nulla.
 
+## Cloudflare Worker "beachin" (nov 2026, in preparazione)
+- `wrangler.jsonc`: Worker con file statici da `./dist`, SPA (`not_found_handling: single-page-application`),
+  `/comandapp` → `comandapp.html` (`html_handling: auto-trailing-slash`). Route `*.beachin.ipamedia.it/*` e
+  `beachin.ipamedia.it/*` (zona `ipamedia.it`) dal ramo `main`; ambiente `test` (Worker `beachin-test`) su
+  `test.beachin.ipamedia.it/*` dal ramo `test`. Anteprime PR su workers.dev.
+- `VITE_SUPABASE_*` sono di build: in Workers Builds vanno come Build variables, main → Supabase produzione, test → Demo.
+  Deploy: main `npx wrangler deploy`, test `npx wrangler deploy --env test`.
+- Servono i DNS di `ipamedia.it` su Cloudflare e un record proxato `*.beachin` (e `beachin`). `wrangler.toml` resta per
+  Cloudflare Pages finché non si spegne.
+
 ## Anteprima single-file (Artifact)
 1. `VITE_INLINE=1 VITE_ROUTER=hash npm run build` (VITE_INLINE=1 forza un bundle unico;
    senza, la build fa code-splitting — Pages e Vercel non lo usano)
