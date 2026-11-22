@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
             tag: `richiesta-${r?.id ?? Date.now()}`,
           }
     const [{ segreto }] = await sql`select decrypted_secret as segreto from vault.decrypted_secrets where name = 'beachin_vapid_private'`
-    webpush.setVapidDetails('https://loriscuba.github.io/BeachIn/', VAPID_PUBBLICA, segreto)
+    webpush.setVapidDetails('https://ipamedia-beachin.github.io/BeachIn/', VAPID_PUBBLICA, segreto)
 
     const iscrizioni = await sql`select endpoint, p256dh, auth, url from beachin.iscrizioni_push(${app}, ${tipo})`
     let inviate = 0
