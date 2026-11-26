@@ -132,7 +132,7 @@ export function SchedaVoce({ v, n = 0, onCambia }: { v: VoceMenu; n?: number; on
         {v.dettaglio && <p className="mt-1 text-[10.5px] uppercase tracking-wider text-[#3B2A20]/40">{v.dettaglio}</p>}
         <div className="mt-auto flex items-center justify-between gap-2 pt-2">
           <span className="num rounded-full bg-[var(--acc-chiaro)] px-2.5 py-0.5 font-display text-lg font-semibold text-[color:var(--acc)]">{v.prezzo ? euroCent(v.prezzo) : '—'}</span>
-          {onCambia && (n > 0 ? <Stepper n={n} onCambia={onCambia} /> : (
+          {onCambia && (n > 0 ? <Stepper n={n} onCambia={onCambia} nome={v.nome} /> : (
             <button type="button" onClick={() => onCambia(1)} className="inline-flex h-9 items-center gap-1 rounded-full bg-[var(--acc)] pl-3 pr-3.5 text-sm font-semibold text-white shadow-sm active:scale-95" aria-label={`Aggiungi ${v.nome}`}>
               <Plus className="h-4 w-4" /> Aggiungi
             </button>
@@ -143,12 +143,12 @@ export function SchedaVoce({ v, n = 0, onCambia }: { v: VoceMenu; n?: number; on
   )
 }
 
-export function Stepper({ n, onCambia }: { n: number; onCambia: (d: number) => void }) {
+export function Stepper({ n, onCambia, nome }: { n: number; onCambia: (d: number) => void; nome?: string }) {
   return (
     <div className="flex items-center gap-1.5">
-      <button type="button" onClick={() => onCambia(-1)} className="grid h-9 w-9 place-content-center rounded-full border border-[#3B2A20]/20 bg-white" aria-label="Togli uno"><Minus className="h-4 w-4" /></button>
+      <button type="button" onClick={() => onCambia(-1)} className="grid h-9 w-9 place-content-center rounded-full border border-[#3B2A20]/20 bg-white" aria-label={nome ? `Togli uno: ${nome}, ora ${n}` : 'Togli uno'}><Minus className="h-4 w-4" /></button>
       <span className="num w-6 text-center text-lg font-bold">{n}</span>
-      <button type="button" onClick={() => onCambia(1)} className="grid h-9 w-9 place-content-center rounded-full bg-[var(--acc)] text-white" aria-label="Aggiungi uno"><Plus className="h-4 w-4" /></button>
+      <button type="button" onClick={() => onCambia(1)} className="grid h-9 w-9 place-content-center rounded-full bg-[var(--acc)] text-white" aria-label={nome ? `Aggiungi uno: ${nome}, ora ${n}` : 'Aggiungi uno'}><Plus className="h-4 w-4" /></button>
     </div>
   )
 }

@@ -312,6 +312,10 @@ Personale, **Eventi**, **Sito** (gestionale) + **SitoAnteprima** (sito pubblico)
   (stesso listino e stessa grafica: foto spritz / ombrelloni), lavagnetta pineta `#2F6B4F` (tramonto).
 - **Foto listino bar**: `ArticoloBar.foto` (colonna `articoli_bar.foto`, migrazione `0023_foto_bar.sql`), Unsplash libere per
   tutte le 60 voci (`fotoBar` in `seed/bar.ts`); il gestore le cambia da Bar → Listino (miniatura cliccabile).
+- **Menu letto ad alta voce** (non vedenti, nov 2026): `components/menu/LettoreMenu.tsx`, sintesi vocale del browser
+  (Web Speech API, gratis, niente server). Una sezione alla volta (nome, prezzo "4 euro e 50", descrizione), passa da sola
+  alla successiva; tasti grandi pausa/indietro/avanti/stop e "Più lento". In Ombrellone dell'app clienti e in `/menu`
+  (5 lingue). Funzionalità `sito.voce` (Impostazioni → Moduli → Sito). Stepper con aria-label col nome della voce.
 
 ## App clienti (`/comandapp`, ott 2026)
 - **Nome e icona** (nov 2026): "Lido dei Pini App" col logo del lido (manifest, favicon `lido-favicon.*`, icone `comandapp-icon-*`). Le anteprime link leggono l'HTML statico: `scripts/pagina-comandapp.mjs` (dopo `vite build`) crea `dist/comandapp.html` con titolo, favicon e meta og/twitter (immagine `comandapp-og.png`, URL assoluto da `SITO_URL`, default beachin.pages.dev). Cloudflare la serve su `/comandapp`, Vercel via rewrite; in produzione Caddy deve servire `{path}.html` prima di `index.html`.

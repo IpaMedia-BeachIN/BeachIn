@@ -27,6 +27,7 @@ import { prezzoLavagna } from '@/components/app/GestioneAppClienti'
 import { EventoModal, FormRistorante, Sospese } from '@/pages/SitoAnteprima'
 import { fotoSito, logoLido } from '@/assets/sito'
 import { PaginaMenu, CopertinaMenu, ChipSezioni, TitoloSezione, SchedaVoce, OrdineInSospeso, GRIGLIA_VOCI } from '@/components/menu/MenuLido'
+import { LettoreMenu } from '@/components/menu/LettoreMenu'
 import { useOrdineInSospeso } from '@/hooks/useOrdineInSospeso'
 
 type Utente = (typeof UTENTI_COMANDAPP)[number]
@@ -390,6 +391,7 @@ function Login({ onEntra }: { onEntra: (u: Utente) => void }) {
 
 function Area({ utente }: { utente: Utente }) {
   const { comande, inviaComanda, articoliBar, sezioniBar } = useDemoData()
+  const voceOn = useModuli().funzioneAttiva('sito.voce')
   const [tab, setTab] = useState<'ordina' | 'ordini'>('ordina')
   // stesso listino del gestionale (Bar → Listino): solo articoli disponibili, categorie nell'ordine scelto
   const articoli = useMemo(() => articoliBar.filter((a) => a.disponibile !== false), [articoliBar])
@@ -444,6 +446,7 @@ function Area({ utente }: { utente: Utente }) {
 
       {tab === 'ordina' && (articoli.length === 0 ? <p className={vuoto}>Il bar non ha articoli disponibili al momento.</p> : (
         <>
+          {voceOn && <LettoreMenu titolo="Menu del bar" className="mb-3" sezioni={categorie.map((c) => ({ id: c.id, nome: c.nome, voci: articoli.filter((a) => a.categoria === c.id).map((a) => ({ nome: a.nome, prezzo: a.prezzoVendita })) }))} />}
           <ChipSezioni sezioni={categorie} attiva={cat} onScegli={vai} className="sticky top-[57px] z-10 -mx-4 bg-[#F6EFE3]/95 px-4 py-2 backdrop-blur" />
           <div className="mt-4 space-y-10">
             {categorie.map((c, i) => (
