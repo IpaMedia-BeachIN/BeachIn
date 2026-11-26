@@ -1,11 +1,12 @@
 /**
  * QR fissi dei tavoli: un QR stampato per tavolo (link con codice non indovinabile, `urlTavoloQr`).
  * Dal telefono si ordina solo se il tavolo è aperto (lo apre il cameriere, o si apre da solo alla prima comanda).
+ * Con «Ordine in autonomia» il tavolo si apre da solo quando il cliente inquadra il QR (tavoli senza servizio al tavolo).
  * Tutto dalla schermata del cameriere: sulla card del tavolo menu (Ristorante, Bar, Lavagnetta), apri/chiudi e stampa;
  * nell'intestazione della scelta tavolo "Chiudi tutti" e "Stampa QR" di tutti i tavoli.
  */
 import { useEffect, useMemo } from 'react'
-import { Lock, Printer, QrCode } from 'lucide-react'
+import { Lock, Printer, QrCode, Smartphone } from 'lucide-react'
 import type { TavoloQr } from '@/data/types'
 import { useDemoData } from '@/context/DemoDataContext'
 import { useModuli } from '@/context/ModuliContext'
@@ -21,10 +22,17 @@ export function AzioniQrTavoli() {
   const { tavoliDelGiorno, tavoliQr, assicuraTavoliQr, impostaTavoloQr } = useDemoData()
   const tavoli = useMemo(() => tavoliDelGiorno(config.oggi), [tavoliDelGiorno])
   const aperti = tavoliQr.filter((q) => q.aperto)
-  const stampaTutti = () => stampaTavoli(assicuraTavoliQr([...tavoli].sort((a, b) => a.numero - b.numero).map((t) => t.numero)))
+  const numeri = useMemo(() => [...tavoli].sort((a, b) => a.numero - b.numero).map((t) => t.numero), [tavoli])
+  const tuttiAutonomi = numeri.length > 0 && numeri.every((n) => tavoliQr.find((q) => q.numero === n)?.autonomo)
+  const stampaTutti = () => stampaTavoli(assicuraTavoliQr(numeri))
   return (
     <div className="flex flex-wrap gap-2">
       {aperti.length > 0 && <Button dimensione="sm" onClick={() => { if (confirm(`Chiudere tutti i ${aperti.length} tavoli aperti?`)) aperti.forEach((q) => impostaTavoloQr(q.numero, { aperto: false })) }} title="Dal QR non si ordina più finché il tavolo non viene riaperto"><Lock className="h-4 w-4" /> Chiudi tutti</Button>}
+      <Button dimensione="sm" onClick={() => {
+        const tutti = !tuttiAutonomi
+        if (confirm(tutti ? 'Mettere tutti i tavoli in autonomia? Il cliente inquadra il QR e ordina senza aspettare il cameriere.' : 'Togliere l\'autonomia a tutti i tavoli? Si ordinerà solo con il tavolo aperto dal cameriere.'))
+          numeri.forEach((n) => impostaTavoloQr(n, { autonomo: tutti }))
+      }} title="Il tavolo si apre da solo quando il cliente inquadra il QR"><Smartphone className="h-4 w-4" /> {tuttiAutonomi ? 'Togli autonomia' : 'Tutti in autonomia'}</Button>
       <Button dimensione="sm" onClick={stampaTutti} title="Stampa i QR fissi di tutti i tavoli"><Printer className="h-4 w-4" /> Stampa QR</Button>
     </div>
   )
@@ -55,6 +63,10 @@ export function DettaglioQr({ numero }: { numero: number }) {
           ))}
         </div>
       </div>
+      <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-calce-200 p-2 text-xs text-profondo/70">
+        <input type="checkbox" className="mt-0.5" checked={!!q.autonomo} onChange={(e) => impostaTavoloQr(q.numero, { autonomo: e.target.checked })} />
+        <span><b className="text-profondo">Ordine in autonomia</b><br />Il tavolo si apre da solo quando il cliente inquadra il QR, senza cameriere. Con «Chiudi conto» si richiude fino alla scansione successiva.</span>
+      </label>
       <div className="flex gap-2">
         <Button className="flex-1" variante={q.aperto ? 'secondario' : 'primario'} onClick={() => impostaTavoloQr(q.numero, { aperto: !q.aperto })}>
           {q.aperto ? <><Lock className="h-4 w-4" /> Chiudi</> : <><QrCode className="h-4 w-4" /> Apri tavolo</>}

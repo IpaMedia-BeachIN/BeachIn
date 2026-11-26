@@ -286,7 +286,9 @@ interface DemoDataValue {
   /** Crea (se mancano) le righe QR dei tavoli e le restituisce, nell'ordine dei numeri. */
   assicuraTavoliQr: (numeri: number[]) => TavoloQr[]
   /** Cambia menu o apertura del QR di un tavolo (crea la riga se manca). */
-  impostaTavoloQr: (numero: number, patch: Partial<Pick<TavoloQr, 'menu' | 'aperto'>>) => void
+  impostaTavoloQr: (numero: number, patch: Partial<Pick<TavoloQr, 'menu' | 'aperto' | 'autonomo'>>) => void
+  /** Pagina pubblica del QR: apre il tavolo in autonomia (solo se `autonomo`); con Supabase scrive solo `aperto` nel DB. */
+  apriTavoloAutonomo: (numero: number) => Promise<void>
   /** Chiude il conto del tavolo (comande pagate e servite), prepara un conto nuovo vuoto e chiude il tavolo ai QR. */
   chiudiContoTavolo: (numero: number) => void
   /** Comande dagli ombrelloni di un giorno passato, lette dal DB (null senza Supabase: sono tutte già in `comande`). */
@@ -699,8 +701,8 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
   // tavolo nuovo creato da due dispositivi insieme: resta il primo (il codice del QR stampato non cambia)
   const syncQr = useSyncSupabase({
     tabella: 'tavoli_qr', accesso: accessoDi('tavoli_qr'), righe: tavoliQr, setRighe: setTavoliQr, nuoveSenzaSovrascrivere: true,
-    aRiga: (q) => ({ id: q.id, numero: q.numero, codice: q.codice, menu: q.menu, aperto: q.aperto, seduta: q.seduta ?? null }),
-    daRiga: (r) => ({ id: r.id, numero: Number(r.numero), codice: r.codice as string, menu: r.menu as TavoloQr['menu'], aperto: !!r.aperto, seduta: (r.seduta as string) ?? undefined }),
+    aRiga: (q) => ({ id: q.id, numero: q.numero, codice: q.codice, menu: q.menu, aperto: q.aperto, autonomo: !!q.autonomo, seduta: q.seduta ?? null }),
+    daRiga: (r) => ({ id: r.id, numero: Number(r.numero), codice: r.codice as string, menu: r.menu as TavoloQr['menu'], aperto: !!r.aperto, autonomo: !!r.autonomo, seduta: (r.seduta as string) ?? undefined }),
     ordina: (a, b) => Number(a.numero) - Number(b.numero),
   })
   const assicuraTavoliQr = useCallback((numeri: number[]) => {
@@ -715,7 +717,7 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
     }
     return numeri.map((n) => esistenti.get(n)!)
   }, [])
-  const impostaTavoloQr = useCallback((numero: number, patch: Partial<Pick<TavoloQr, 'menu' | 'aperto'>>) => {
+  const impostaTavoloQr = useCallback((numero: number, patch: Partial<Pick<TavoloQr, 'menu' | 'aperto' | 'autonomo'>>) => {
     assicuraTavoliQr([numero])
     tavoliQrRef.current = tavoliQrRef.current.map((q) => (q.numero === numero ? { ...q, ...patch } : q))
     setTavoliQr(tavoliQrRef.current)
@@ -977,6 +979,18 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
       )
     )
   }, [])
+  // La pagina pubblica legge tavoli_qr in modo «nuove» (non salva modifiche): l'apertura va scritta a parte,
+  // e solo se nel DB il tavolo è ancora in autonomia e chiuso.
+  const apriTavoloAutonomo = useCallback(async (numero: number) => {
+    const q = tavoliQrRef.current.find((x) => x.numero === numero)
+    if (!q?.autonomo || q.aperto) return
+    tavoliQrRef.current = tavoliQrRef.current.map((x) => (x.numero === numero ? { ...x, aperto: true } : x))
+    setTavoliQr(tavoliQrRef.current)
+    if (!supabase) return
+    const { error } = await supabase.from('tavoli_qr').update({ aperto: true }).eq('numero', numero).eq('autonomo', true).eq('aperto', false)
+    if (error) console.error('[supabase] tavoli_qr:', error.message)
+    void syncQr.ricarica()
+  }, [syncQr])
   const annullaComanda = useCallback((id: string) => {
     setComande((prev) => prev.filter((c) => c.id !== id))
   }, [])
@@ -1622,6 +1636,7 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
       tavoliQr,
       assicuraTavoliQr,
       impostaTavoloQr,
+      apriTavoloAutonomo,
       chiudiContoTavolo,
       verificaContoTavolo,
       leggiComandeGiorno,
@@ -1743,6 +1758,7 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
       tavoliQr,
       assicuraTavoliQr,
       impostaTavoloQr,
+      apriTavoloAutonomo,
       chiudiContoTavolo,
       verificaContoTavolo,
       leggiComandeGiorno,

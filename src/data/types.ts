@@ -367,6 +367,8 @@ export interface TavoloQr {
   codice: string
   menu: 'ristorante' | 'bar' | 'lavagnetta'
   aperto: boolean
+  /** Ordine in autonomia: il tavolo si apre da solo quando il cliente inquadra il QR (senza cameriere). */
+  autonomo?: boolean
   /** Conto in corso del tavolo: ogni comanda ne porta l'id; «Chiudi conto» lo chiude e ne prepara uno nuovo. */
   seduta?: string
 }

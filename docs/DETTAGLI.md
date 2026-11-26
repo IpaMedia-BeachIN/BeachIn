@@ -271,6 +271,10 @@ Personale, **Eventi**, **Sito** (gestionale) + **SitoAnteprima** (sito pubblico)
   "Stampa QR" di tutti i tavoli, `stampaQr`). Vecchio link `/sala?tab=qr` → Cameriere. La funzionalità `sala.qr` ("Ordini col QR del
   tavolo") resta l'interruttore che attiva QR e "Apri tavolo". `useQrTavolo(numero)` crea la riga mancante in un effect.
   Il tablet self ha il bottone telefono che mostra il QR del suo tavolo (`QrTelefono`).
+- **Ordine in autonomia** (26/11/2026, migrazione 0037, colonna `tavoli_qr.autonomo`): spunta "Ordine in autonomia" in `DettaglioQr`
+  e tasto "Tutti in autonomia"/"Togli autonomia" in `AzioniQrTavoli`. La pagina `/tavolo` con tavolo chiuso e `autonomo` chiama
+  `apriTavoloAutonomo(numero)` (scrive solo `aperto=true` nel DB, se ancora chiuso e in autonomia) e apre il menu; una pagina già
+  legata a un conto chiuso non riapre. Senza autonomia resta "chiedi al cameriere" (protezione da chi ha la foto del QR).
 - **Conto del tavolo** (migrazione 0021): `TavoloQr.seduta` = conto in corso; ogni comanda nasce con la `seduta` del tavolo.
   `delConto(comande, tavolo, seduta)` (lib/sala) = comande della seduta non `pagata` (anche servite): "già ordinato" e totale nel
   cameriere e nel tablet. Tasto **Chiudi conto** (card del tavolo, con riepilogo `RiepilogoConto`) → `chiudiContoTavolo(numero)`:
