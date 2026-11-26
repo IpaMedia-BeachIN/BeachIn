@@ -267,7 +267,8 @@ interface DemoDataValue {
   // Comande dall'ombrellone (servizio in spiaggia)
   comande: Comanda[]
   inviaComanda: (ombrellone: string, righe: RigaComanda[], note?: string, extra?: Pick<Comanda, 'origine' | 'cliente'>) => Comanda
-  avanzaComanda: (id: string) => void
+  /** Passa allo stato successivo, o direttamente a `a` (bar a un tocco: Da fare → Pronta). */
+  avanzaComanda: (id: string, a?: StatoComanda) => void
   annullaComanda: (id: string) => void
 
   // Comande del ristorante: dal cameriere o dal tablet al tavolo → cucina
@@ -970,10 +971,10 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
     setComande((prev) => [comanda, ...prev])
     return comanda
   }, [])
-  const avanzaComanda = useCallback((id: string) => {
+  const avanzaComanda = useCallback((id: string, a?: StatoComanda) => {
     setComande((prev) =>
       prev.map((c) =>
-        c.id === id ? { ...c, stato: SUCCESSIVO[c.stato] } : c
+        c.id === id ? { ...c, stato: a ?? SUCCESSIVO[c.stato] } : c
       )
     )
   }, [])

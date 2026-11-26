@@ -5,10 +5,12 @@
  * Ogni reparto vede solo le sue righe (`perReparto`). Al bar (modulo Bar al tavolo) nelle stesse colonne ci sono anche
  * le comande dagli ombrelloni: nuova = Da fare, presa in carico/in preparazione = In lavorazione, pronta = Pronte.
  * Campanello a ogni comanda nuova, minuti di attesa sulla scheda.
+ * Bar a un tocco (26/11/2026): due colonne Da fare → Pronte, tasto «Pronta» per tavoli e ombrelloni.
+ * Stampa: tasto su ogni scheda e «Stampa automatica» per dispositivo (scontrino all'arrivo e al «via», `lib/stampaComanda`).
  */
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { Check, ChefHat, Clock, Hourglass, Smartphone, Tablet, Users, X } from 'lucide-react'
-import type { Comanda, ComandaSala, StatoComandaSala } from '@/data/types'
+import { Check, ChefHat, Clock, Hourglass, Printer, Smartphone, Tablet, Users, X } from 'lucide-react'
+import type { Comanda, ComandaSala, StatoComandaSala, StatoRigaSala } from '@/data/types'
 import { useDemoData } from '@/context/DemoDataContext'
 import { Card } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
@@ -19,6 +21,7 @@ import { aspettaVia, azioneStatoSala, daPreparare, minutiDa, nomeUscita, perRepa
 import { ComandaCard } from './ComandaOmbrellone'
 import { StrumentiOmbrelloni } from './StrumentiOmbrelloni'
 import { PulsanteSchermoIntero, SchermoIntero, useSchermoIntero } from '@/components/SchermoIntero'
+import { impostaStampaAuto, salvaStampate, scontrinoOmbrellone, scontrinoTavolo, stampaAutoAttiva, stampaScontrini, stampate, type Scontrino } from '@/lib/stampaComanda'
 
 const COLONNE: { stato: StatoComandaSala; titolo: string; colore: string }[] = [
   { stato: 'inviata', titolo: 'Da fare', colore: 'bg-boa' },
@@ -29,6 +32,49 @@ const COLONNE: { stato: StatoComandaSala; titolo: string; colore: string }[] = [
 /** Una scheda nelle colonne: comanda del ristorante vista dal reparto, oppure (al bar) comanda dall'ombrellone. */
 type Voce = { tipo: 'tavolo'; stato: StatoComandaSala; ts: number; c: ComandaSala; indici: number[]; via?: boolean } | { tipo: 'ombrellone'; stato: StatoComandaSala; ts: number; c: Comanda }
 const colonnaOmbrellone = (c: Comanda): StatoComandaSala => (c.stato === 'in_attesa' ? 'inviata' : c.stato === 'pronta' ? 'pronta' : 'in_preparazione')
+/** Al bar niente colonna di mezzo: quello che è in lavorazione resta in Da fare. */
+const colonneDi = (reparto: Reparto) => (reparto === 'bar' ? COLONNE.filter((c) => c.stato !== 'in_preparazione') : COLONNE)
+
+/** Ultima uscita chiamata che ha ancora qualcosa da preparare (-1 = nessuna: aspetta il via). */
+const ultimaChiamata = (c: ComandaSala) => Math.max(-1, ...c.righe.filter((r) => uscitaChiamata(c, uscitaDi(r))).map(uscitaDi))
+
+/**
+ * Stampa automatica su questo dispositivo: scontrino a ogni comanda nuova del reparto e uno per ogni «via» successivo.
+ * Accendendola si segna come già stampato quello che c'è (niente arretrati); comande più vecchie di 3 ore mai.
+ */
+function useStampaAuto(reparto: Reparto, voci: Voce[]) {
+  const [auto, setAuto] = useState(() => stampaAutoAttiva(reparto))
+  const segnaTutto = (m: Record<string, number>) => { for (const v of voci) m[v.c.id] = v.tipo === 'tavolo' ? ultimaChiamata(v.c) : -1; return m }
+  const cambia = () => {
+    const on = !auto
+    if (on) salvaStampate(reparto, segnaTutto(stampate(reparto)))
+    impostaStampaAuto(reparto, on)
+    setAuto(on)
+  }
+  useEffect(() => {
+    if (!auto) return
+    const fatte = stampate(reparto)
+    const limite = Date.now() - 3 * 3600000
+    const nuovi: Scontrino[] = []
+    for (const v of voci) {
+      const prima = fatte[v.c.id]
+      if (v.tipo === 'ombrellone') {
+        if (prima === undefined && v.c.stato === 'in_attesa' && v.ts >= limite) nuovi.push(scontrinoOmbrellone(v.c))
+        fatte[v.c.id] = -1
+        continue
+      }
+      const ultima = ultimaChiamata(v.c)
+      if (prima === undefined) { if (v.ts >= limite) nuovi.push(scontrinoTavolo(v.c, reparto)) }
+      else for (const n of [...new Set(v.c.righe.map(uscitaDi))].sort((a, b) => a - b)) {
+        if (n > prima && n <= ultima) nuovi.push(scontrinoTavolo(v.c, reparto, n))
+      }
+      fatte[v.c.id] = Math.max(prima ?? -1, ultima)
+    }
+    salvaStampate(reparto, fatte)
+    stampaScontrini(nuovi)
+  }, [auto, voci, reparto])
+  return { auto, cambia }
+}
 
 export default function Cucina({ reparto = 'cucina' }: { reparto?: Reparto }) {
   const { comandeSala, comande, avanzaComanda, annullaComanda, annullaComandaSala, segnaRigheSala, chiamaUscitaSala } = useDemoData()
@@ -42,20 +88,24 @@ export default function Cucina({ reparto = 'cucina' }: { reparto?: Reparto }) {
       if (!v || v.c.stato === 'servita') return []
       // in attesa del via: in fondo a Da fare, non «In lavorazione» (la cucina non ha niente da preparare)
       const via = aspettaVia(v.c)
-      return [{ tipo: 'tavolo' as const, stato: via ? 'inviata' : v.c.stato, ts: c.ts, c: v.c, indici: v.indici, via }]
+      const stato = via || (reparto === 'bar' && v.c.stato === 'in_preparazione') ? 'inviata' : v.c.stato
+      return [{ tipo: 'tavolo' as const, stato, ts: c.ts, c: v.c, indici: v.indici, via }]
     })
     // al bar anche gli ombrelloni; delle pronte restano le ultime 12 non ancora incassate
-    const ombrelloni: Voce[] = reparto !== 'bar' ? [] : comande.filter((c) => !c.pagata).map((c) => ({ tipo: 'ombrellone' as const, stato: colonnaOmbrellone(c), ts: c.ts ?? 0, c }))
+    const ombrelloni: Voce[] = reparto !== 'bar' ? [] : comande.filter((c) => !c.pagata).map((c) => ({ tipo: 'ombrellone' as const, stato: colonnaOmbrellone(c) === 'pronta' ? 'pronta' : 'inviata', ts: c.ts ?? 0, c }))
     const pronti = new Set(ombrelloni.filter((v) => v.stato === 'pronta').sort((a, b) => b.ts - a.ts).slice(0, 12))
     return [...tavoli, ...ombrelloni.filter((v) => v.stato !== 'pronta' || pronti.has(v))]
   }, [comandeSala, comande, reparto])
   const chiave = (v: Voce) => `${v.tipo}-${v.c.id}`
   const intero = useSchermoIntero()
+  const stampa = useStampaAuto(reparto, voci)
+  const colonne = colonneDi(reparto)
+  const bar = reparto === 'bar'
 
   const tabellone = (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 rounded-xl bg-white p-1 text-[13px] font-semibold shadow-sm md:hidden">
-        {COLONNE.map((col) => {
+      <div className={cn('grid rounded-xl bg-white p-1 text-[13px] font-semibold shadow-sm md:hidden', bar ? 'grid-cols-2' : 'grid-cols-3')}>
+        {colonne.map((col) => {
           const n = voci.filter((v) => v.stato === col.stato && !(v.tipo === 'tavolo' && v.via)).length
           return (
             <button key={col.stato} type="button" onClick={() => setColonna(col.stato)}
@@ -65,8 +115,8 @@ export default function Cucina({ reparto = 'cucina' }: { reparto?: Reparto }) {
           )
         })}
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {COLONNE.map((col) => {
+      <div className={cn('grid grid-cols-1 gap-4', bar ? 'md:grid-cols-2' : 'md:grid-cols-3')}>
+        {colonne.map((col) => {
           // si lavora dalla più vecchia; le pronte dalla più recente
           const inVia = (v: Voce) => (v.tipo === 'tavolo' && v.via ? 1 : 0)
           const lista = voci.filter((v) => v.stato === col.stato).sort((a, b) => inVia(a) - inVia(b) || (col.stato === 'pronta' ? b.ts - a.ts : a.ts - b.ts))
@@ -81,8 +131,10 @@ export default function Cucina({ reparto = 'cucina' }: { reparto?: Reparto }) {
               {lista.map((v, i) => <Fragment key={chiave(v)}>
                 {i === primaInVia && <p className="flex items-center gap-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-profondo/45"><Hourglass className="h-3 w-3" /> Aspettano il via</p>}
                 {v.tipo === 'ombrellone'
-                ? <ComandaCard key={chiave(v)} comanda={v.c} onAvanza={() => avanzaComanda(v.c.id)} onAnnulla={() => annullaComanda(v.c.id)} />
-                : <SchedaComanda key={chiave(v)} c={v.c} ora={ora} {...azioniTavolo(v.c, v.indici, segnaRigheSala)} onVia={(n) => chiamaUscitaSala(v.c.id, n)}
+                ? <ComandaCard key={chiave(v)} comanda={v.c} rapida onAvanza={() => avanzaComanda(v.c.id, 'pronta')} onAnnulla={() => annullaComanda(v.c.id)}
+                    onStampa={() => stampaScontrini([scontrinoOmbrellone(v.c)])} />
+                : <SchedaComanda key={chiave(v)} c={v.c} ora={ora} {...azioniTavolo(v.c, v.indici, segnaRigheSala, bar)} onVia={(n) => chiamaUscitaSala(v.c.id, n)}
+                    onStampa={() => stampaScontrini([scontrinoTavolo(v.c, reparto)])}
                     // al bar niente X: annullerebbe anche i piatti della cucina
                     onAnnulla={reparto === 'bar' ? undefined : () => { if (confirm(`Annullare la comanda del tavolo ${v.c.tavolo}?`)) annullaComandaSala(v.c.id) }} />}
               </Fragment>)}
@@ -93,7 +145,13 @@ export default function Cucina({ reparto = 'cucina' }: { reparto?: Reparto }) {
     </div>
   )
 
-  if (intero.attivo) return <SchermoIntero titolo={reparto === 'bar' ? 'Monitor Bar' : 'Cucina'} onEsci={intero.esci}>{tabellone}</SchermoIntero>
+  const tastoStampa = (
+    <Button dimensione="sm" variante={stampa.auto ? 'primario' : 'secondario'} onClick={stampa.cambia}
+      title="Stampa da sola uno scontrino a ogni comanda nuova e a ogni «via», solo su questo dispositivo">
+      <Printer className="h-4 w-4" /> Stampa automatica {stampa.auto ? 'ON' : 'OFF'}
+    </Button>
+  )
+  if (intero.attivo) return <SchermoIntero titolo={bar ? 'Monitor Bar' : 'Cucina'} onEsci={intero.esci}><div className="mb-3 flex justify-end">{tastoStampa}</div>{tabellone}</SchermoIntero>
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
@@ -102,7 +160,8 @@ export default function Cucina({ reparto = 'cucina' }: { reparto?: Reparto }) {
             ? reparto === 'bar' ? '● Coda unica del bar: tavoli del ristorante e ombrelloni, su tutti i dispositivi' : '● Comande condivise tra tutti i dispositivi (sala, tablet, cucina)'
             : '● Modalità demo: comande condivise solo tra schede di questo browser'}
         </p>
-        {reparto === 'bar' && <StrumentiOmbrelloni />}
+        {bar && <StrumentiOmbrelloni />}
+        {tastoStampa}
         <PulsanteSchermoIntero onClick={intero.entra} />
       </div>
       {tabellone}
@@ -113,9 +172,12 @@ export default function Cucina({ reparto = 'cucina' }: { reparto?: Reparto }) {
 /**
  * Azioni sulla vista di un reparto: gli indici della vista si traducono in quelli della comanda (`orig`).
  * Avanza: Da fare → i piatti chiamati in lavorazione; Pronte → servito tutto il pronto.
+ * `rapida` (bar): finché non è pronta il tasto è «Pronta» e segna pronti tutti i chiamati da fare.
  */
-export function azioniTavolo(c: ComandaSala, orig: number[], segna: (id: string, indici: number[], stato: 'preparazione' | 'pronta' | 'servita') => void) {
+export function azioniTavolo(c: ComandaSala, orig: number[], segna: (id: string, indici: number[], stato: 'preparazione' | 'pronta' | 'servita') => void, rapida = false) {
   const tutti = (filtro: (st: string, i: number) => boolean) => c.righe.flatMap((r, i) => (filtro(statoRiga(c, r), i) ? [orig[i]] : []))
+  const daFare = () => tutti((st, i) => daPreparare(st as StatoRigaSala) && uscitaChiamata(c, uscitaDi(c.righe[i])))
+  if (rapida && c.stato !== 'pronta') return { azione: 'Pronta', onAvanza: () => segna(c.id, daFare(), 'pronta'), onSegna: (indici: number[], pronta: boolean) => segna(c.id, indici.map((i) => orig[i]), pronta ? 'pronta' : 'preparazione') }
   return {
     onAvanza: () => (c.stato === 'inviata'
       ? segna(c.id, tutti((st, i) => st === 'attesa' && uscitaChiamata(c, uscitaDi(c.righe[i]))), 'preparazione')
@@ -124,9 +186,13 @@ export function azioniTavolo(c: ComandaSala, orig: number[], segna: (id: string,
   }
 }
 
-export function SchedaComanda({ c, ora, onAvanza, onSegna, onVia, onAnnulla }: {
+export function SchedaComanda({ c, ora, onAvanza, onSegna, onVia, onAnnulla, onStampa, azione }: {
   c: ComandaSala; ora: number; onAvanza: () => void; onSegna: (indici: number[], pronta: boolean) => void; onVia: (n: number) => void; onAnnulla?: () => void
+  onStampa?: () => void
+  /** Testo del tasto (assente = quello dello stato). */
+  azione?: string
 }) {
+  const testo = azione ?? azioneStatoSala[c.stato]
   const min = minutiDa(c.ts, ora)
   const uscite = usciteDi(c)
   return (
@@ -177,7 +243,8 @@ export function SchedaComanda({ c, ora, onAvanza, onSegna, onVia, onAnnulla }: {
         {c.origine === 'qr' ? <Badge tono="mare"><Smartphone className="h-3 w-3" /> QR dal telefono</Badge> : c.origine === 'self' ? <Badge tono="mare"><Tablet className="h-3 w-3" /> Tablet al tavolo</Badge> : <Badge tono="neutro"><ChefHat className="h-3 w-3" /> {c.cameriere ?? 'Sala'}</Badge>}
         <span className="ml-auto" />
         {onAnnulla && <button type="button" onClick={onAnnulla} className="grid h-8 w-8 place-content-center rounded-lg text-profondo/35 hover:bg-boa/10 hover:text-boa" aria-label="Annulla comanda" title="Annulla comanda"><X className="h-4 w-4" /></button>}
-        {azioneStatoSala[c.stato] && <Button dimensione="sm" variante="primario" onClick={onAvanza}>{azioneStatoSala[c.stato]}</Button>}
+        {onStampa && <button type="button" onClick={onStampa} className="grid h-8 w-8 place-content-center rounded-lg text-profondo/35 hover:bg-calce/60 hover:text-profondo" aria-label="Stampa scontrino" title="Stampa scontrino"><Printer className="h-4 w-4" /></button>}
+        {testo && <Button dimensione="sm" variante="primario" onClick={onAvanza}>{testo}</Button>}
       </div>
     </Card>
   )

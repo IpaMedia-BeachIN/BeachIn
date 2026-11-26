@@ -1,5 +1,5 @@
 /** Scheda di una comanda dall'ombrellone (pagina Comande e coda del bar): righe, stato e tasto per avanzare. */
-import { Check, Umbrella, X } from 'lucide-react'
+import { Check, Printer, Umbrella, X } from 'lucide-react'
 import type { Comanda, StatoComanda } from '@/data/types'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -15,8 +15,11 @@ const azione: Partial<Record<StatoComanda, string>> = {
 }
 
 
-export function ComandaCard({ comanda: c, onAvanza, onAnnulla }: { comanda: Comanda; onAvanza: () => void; onAnnulla: () => void }) {
+/** `rapida` (Monitor Bar): un solo tasto «Pronta» da qualsiasi stato; `onAvanza` porta direttamente a pronta. `onStampa`: scontrino. */
+export function ComandaCard({ comanda: c, onAvanza, onAnnulla, rapida = false, onStampa }: { comanda: Comanda; onAvanza: () => void; onAnnulla: () => void; rapida?: boolean; onStampa?: () => void }) {
   const consegnata = c.stato === 'pronta'
+  const testo = rapida ? (consegnata ? undefined : 'Pronta') : azione[c.stato]
+  const primario = rapida || c.stato === 'in_preparazione'
   return (
     <div className={cn('rounded-xl border p-3', consegnata ? 'border-calce-200 bg-calce/40 opacity-70' : 'border-calce-200 bg-white')}>
       <div className="flex items-center justify-between gap-2">
@@ -41,7 +44,10 @@ export function ComandaCard({ comanda: c, onAvanza, onAnnulla }: { comanda: Coma
           {!consegnata && (
             <button type="button" onClick={onAnnulla} className="grid h-8 w-8 place-content-center rounded-lg text-profondo/45 hover:bg-boa/10 hover:text-boa" title="Annulla comanda" aria-label="Annulla comanda"><X className="h-4 w-4" /></button>
           )}
-          {azione[c.stato] && <Button variante={c.stato === 'in_preparazione' ? 'primario' : 'secondario'} dimensione="sm" onClick={onAvanza}>{c.stato === 'in_preparazione' && <Check className="h-4 w-4" />} {azione[c.stato]}</Button>}
+          {onStampa && (
+            <button type="button" onClick={onStampa} className="grid h-8 w-8 place-content-center rounded-lg text-profondo/45 hover:bg-calce/60" title="Stampa scontrino" aria-label="Stampa scontrino"><Printer className="h-4 w-4" /></button>
+          )}
+          {testo && <Button variante={primario ? 'primario' : 'secondario'} dimensione="sm" onClick={onAvanza}>{primario && <Check className="h-4 w-4" />} {testo}</Button>}
           {consegnata && <span className="inline-flex items-center gap-1 text-sm font-medium text-acqua"><Check className="h-4 w-4" /> Pronta</span>}
         </div>
       </div>

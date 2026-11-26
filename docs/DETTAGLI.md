@@ -257,6 +257,16 @@ Personale, **Eventi**, **Sito** (gestionale) + **SitoAnteprima** (sito pubblico)
   pronta = Pronte, ultime 12 non incassate); al bar niente X sulle comande dei tavoli. `CodaBar compatta` = elenco unico in Comande. Dove: scheda **Monitor Bar** in `/sala?tab=bar` (voce "Monitor Bar" nel menu **Bar**, non più sotto Ristorante; badge `bar`), quarta scheda dell'app
   `/salaapp`, e al posto della coda nella pagina Comande quando il modulo è attivo (`<CodaBar compatta suoni />`).
 
+- **Bar a un tocco** (26/11/2026, incontro LDP): al Monitor Bar due colonne **Da fare → Pronte**; tavoli e ombrelloni hanno un solo
+  tasto **Pronta** (`ComandaCard rapida` → `avanzaComanda(id, 'pronta')`; `azioniTavolo(..., rapida)` segna pronte le righe chiamate da
+  fare). Niente più «Prendi in carico»/«Inizia preparazione» al bar (il cliente in ComandApp vede Inviata → Pronta). Cucina invariata.
+- **Stampa scontrini cucina/bar** (`src/lib/stampaComanda.ts`): tasto stampante su ogni scheda e **Stampa automatica ON/OFF**
+  nell'intestazione di Cucina e Monitor Bar, salvata **per dispositivo** (localStorage `beachin.stampa.auto.<reparto>`, stampati in
+  `beachin.stampa.fatte.<reparto>`: id → ultima uscita stampata). Scontrino 80 mm all'arrivo (uscite non chiamate «aspetta il via») e uno
+  per ogni «via» successivo; accendendola niente arretrati, mai comande di oltre 3 ore. Stampa da iframe nascosto: silenziosa solo con
+  Chrome avviato con `--kiosk-printing` e la termica come predefinita (altrimenti si apre la finestra di stampa). Niente server di stampa:
+  per stampanti di rete senza PC (Epson Server Direct Print / Star CloudPRNT) servirà una Edge Function.
+
 ## QR tavoli e scelta tavolo per zona (ott 2026)
 - **Scelta del tavolo per zona** (`src/pages/sala/TavoliPerZona.tsx`): cameriere e avvio tablet self usano i tavoli del
   giorno (`tavoliDelGiorno(config.oggi)`, gli stessi di Ristorante → Tavoli) divisi per le zone di `lib/zoneTavoli.ts`.
