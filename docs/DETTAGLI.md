@@ -327,7 +327,7 @@ Personale, **Eventi**, **Sito** (gestionale) + **SitoAnteprima** (sito pubblico)
 - **Ritiro al banco** (nov 2026, migrazione 0036): sopra "Ordina" il cliente sceglie **All'ombrellone** (+ spese di consegna) o
   **Ritiro al banco** (senza spese; scelta ricordata in `beachin.comandapp.ritiro`). `Comanda.ritiro` / `Comanda.consegna` (colonne
   `ritiro`, `consegna` di `beachin.comande`, consegna già nel `totale`). Spese in `sito_contenuti` riga `consegna_ombrellone` `{costo}`
-  (default 1 €, `costoConsegna`/`impostaCostoConsegna`), modificabili in Bar → Listino da chi ha permesso `bar` 2 (policy "bar consegna").
+  (default 2 €, `costoConsegna`/`impostaCostoConsegna`), modificabili in Bar → Listino da chi ha permesso `bar` 2 (policy "bar consegna").
   Al bar `ComandaCard` mostra la fascia gialla "Ritiro al banco · non consegnare" e il tasto "Pronta al banco"; il cliente legge
   "passa a ritirarlo al banco".
 - **Prenota** Ristorante/Eventi riusa `FormRistorante`, `EventoModal`, `Sospese` esportati da `SitoAnteprima` (stessi flussi

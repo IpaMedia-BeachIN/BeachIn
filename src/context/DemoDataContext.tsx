@@ -62,7 +62,7 @@ import { ricalcolaStato, statoRiga, uscitaChiamata, uscitaDi } from '@/lib/sala'
 
 const CHIAVE_COMANDE = 'beachin.comande.v1'
 /** Spese di consegna all'ombrellone finché il gestore non le cambia in Bar → Listino. */
-const COSTO_CONSEGNA_INIZIALE = 1
+const COSTO_CONSEGNA_INIZIALE = 2
 const SUCCESSIVO: Record<StatoComanda, StatoComanda> = {
   in_attesa: 'presa_in_carico', presa_in_carico: 'in_preparazione', in_preparazione: 'pronta', pronta: 'pronta',
 }
