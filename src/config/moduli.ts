@@ -218,6 +218,7 @@ export const FUNZIONI: InfoFunzione[] = [
   f('sito', 'interazioni', 'Recensioni e messaggi'),
   f('sito', 'marketing', 'Sito e marketing'),
   f('sito', 'app', 'App clienti'),
+  f('sito', 'voce', 'Menu letto ad alta voce (non vedenti)'),
 ]
 
 export const funzioniDi = (modulo: ModuloId) => FUNZIONI.filter((x) => x.modulo === modulo)

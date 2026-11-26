@@ -9,6 +9,8 @@ import { useDemoData } from '@/context/DemoDataContext'
 import { LINGUE, nomeSezioneIn, nomeIn, uiLingue } from '@/lib/menuLingue'
 import { PaginaMenu, CopertinaMenu, TitoloSezione, SchedaVoce, PiedeMenu, GRIGLIA_VOCI } from '@/components/menu/MenuLido'
 import { cn } from '@/lib/cn'
+import { useModuli } from '@/context/ModuliContext'
+import { LettoreMenu } from '@/components/menu/LettoreMenu'
 
 
 function linguaIniziale(param: string | null): LinguaMenu {
@@ -23,6 +25,7 @@ export default function MenuPubblico() {
   const [q, setQ] = useSearchParams()
   const [lingua, setLingua] = useState<LinguaMenu>(() => linguaIniziale(q.get('lang')))
   const tavolo = q.get('tavolo')
+  const voceOn = useModuli().funzioneAttiva('sito.voce')
   const cambia = (l: LinguaMenu) => { setLingua(l); q.set('lang', l); setQ(q, { replace: true }) }
 
   return (
@@ -38,6 +41,8 @@ export default function MenuPubblico() {
 
       <main className="mx-auto max-w-5xl space-y-12 px-4 pt-16 sm:px-6">
         <p className="text-center font-gesso text-3xl text-[color:var(--acc)]">{uiLingue.menu[lingua]}</p>
+        {voceOn && <LettoreMenu titolo={uiLingue.menu[lingua]} lingua={lingua} className="mx-auto max-w-md"
+          sezioni={sezioniMenu.map((sez) => ({ id: sez.id, nome: nomeSezioneIn(sez, lingua), voci: menu.filter((p) => p.categoria === sez.id).map((p) => ({ nome: nomeIn(p, lingua), prezzo: p.prezzo, descrizione: lingua === 'it' ? p.descrizione : undefined })) })).filter((x) => x.voci.length)} />}
         {sezioniMenu.map((sez, i) => {
           const piatti = menu.filter((p) => p.categoria === sez.id)
           if (!piatti.length) return null
