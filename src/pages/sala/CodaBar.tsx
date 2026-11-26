@@ -33,8 +33,8 @@ function Elenco() {
 
 function Voce({ v, ora }: { v: VoceBar; ora: number }) {
   const { avanzaComanda, annullaComanda, segnaRigheSala, chiamaUscitaSala } = useDemoData()
-  if (v.tipo === 'ombrellone') return <ComandaCard comanda={v.c} onAvanza={() => avanzaComanda(v.c.id)} onAnnulla={() => annullaComanda(v.c.id)} />
+  if (v.tipo === 'ombrellone') return <ComandaCard comanda={v.c} rapida onAvanza={() => avanzaComanda(v.c.id, 'pronta')} onAnnulla={() => annullaComanda(v.c.id)} />
   const vista = perReparto(v.c, 'bar')
   if (!vista) return null
-  return <SchedaComanda c={vista.c} ora={ora} {...azioniTavolo(vista.c, vista.indici, segnaRigheSala)} onVia={(n) => chiamaUscitaSala(v.c.id, n)} />
+  return <SchedaComanda c={vista.c} ora={ora} {...azioniTavolo(vista.c, vista.indici, segnaRigheSala, true)} onVia={(n) => chiamaUscitaSala(v.c.id, n)} />
 }
