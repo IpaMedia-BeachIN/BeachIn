@@ -61,6 +61,8 @@ import { useSyncSupabase, type AccessoSync } from '@/hooks/useSyncSupabase'
 import { ricalcolaStato, statoRiga, uscitaChiamata, uscitaDi } from '@/lib/sala'
 
 const CHIAVE_COMANDE = 'beachin.comande.v1'
+/** Spese di consegna all'ombrellone finché il gestore non le cambia in Bar → Listino. */
+const COSTO_CONSEGNA_INIZIALE = 1
 const SUCCESSIVO: Record<StatoComanda, StatoComanda> = {
   in_attesa: 'presa_in_carico', presa_in_carico: 'in_preparazione', in_preparazione: 'pronta', pronta: 'pronta',
 }
@@ -94,7 +96,7 @@ export const PAGINE_CLIENTI: Record<string, (cerca: URLSearchParams) => Record<s
   '/sito/anteprima': () => SITO,
   '/comandapp': () => ({
     ...SITO, ...LISTINI, notizie: LETTURA,
-    comande: { modo: 'nuove', colonne: 'id,ombrellone,righe,totale,stato,ora,note,origine,ts,pagata' },
+    comande: { modo: 'nuove', colonne: 'id,ombrellone,righe,totale,stato,ora,note,origine,ts,pagata,ritiro,consegna' },
   }),
   // modifica/annulla dal link della mail: la prenotazione passa dalle funzioni del DB col codice segreto;
   // qui solo quello che serve a mostrare la disponibilità (come il sito)
@@ -266,7 +268,10 @@ interface DemoDataValue {
 
   // Comande dall'ombrellone (servizio in spiaggia)
   comande: Comanda[]
-  inviaComanda: (ombrellone: string, righe: RigaComanda[], note?: string, extra?: Pick<Comanda, 'origine' | 'cliente'>) => Comanda
+  inviaComanda: (ombrellone: string, righe: RigaComanda[], note?: string, extra?: Pick<Comanda, 'origine' | 'cliente' | 'ritiro' | 'consegna'>) => Comanda
+  /** Spese di consegna all'ombrellone per gli ordini dall'app (€, 0 = gratis); il ritiro al banco è sempre senza spese. */
+  costoConsegna: number
+  impostaCostoConsegna: (euro: number) => void
   avanzaComanda: (id: string) => void
   annullaComanda: (id: string) => void
 
@@ -438,7 +443,7 @@ const comandaDaRiga = (r: Record<string, unknown> & { id: string }): Comanda => 
   id: r.id, ombrellone: r.ombrellone as string, righe: r.righe as Comanda['righe'], totale: Number(r.totale),
   stato: r.stato as StatoComanda, ora: r.ora as string, note: (r.note as string) ?? undefined,
   origine: (r.origine as Comanda['origine']) ?? undefined, cliente: (r.cliente as string) ?? undefined, ts: Number(r.ts),
-  pagata: !!r.pagata,
+  pagata: !!r.pagata, ritiro: !!r.ritiro || undefined, consegna: Number(r.consegna) || undefined,
 })
 
 /** `pagina`: percorso aperto (es. `/tavolo`) e sua query: decide quali tabelle scaricare (vedi `PAGINE_CLIENTI`). */
@@ -511,6 +516,7 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
   const canaliPrenotazione = contenuto<CanaliPrenotazione>('canali', CANALI_INIZIALI)
   const homeSito = contenuto<ContenutoHome>('home', statoSito.home)
   const prezziListino = contenuto<{ prezzi: Record<string, number> }>('listino', { prezzi: {} }).prezzi ?? {}
+  const costoConsegna = Math.max(0, Number(contenuto<{ costo: number }>('consegna_ombrellone', { costo: COSTO_CONSEGNA_INIZIALE }).costo) || 0)
   const bozzaLavagnetta = contenuto<{ voci: VoceLavagnetta[] | null }>('lavagnetta_bozza', { voci: null }).voci ?? null
   const scriviContenuto = useCallback((id: string, valore: (prima: unknown) => unknown) => {
     setContenutiSito((prev) => {
@@ -634,6 +640,7 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
     aRiga: (c) => ({
       id: c.id, ombrellone: c.ombrellone, righe: c.righe, totale: c.totale, stato: c.stato, ora: c.ora,
       note: c.note ?? null, origine: c.origine ?? null, cliente: c.cliente ?? null, ts: c.ts ?? 0, pagata: !!c.pagata,
+      ritiro: !!c.ritiro, consegna: c.consegna ?? 0,
     }),
     daRiga: comandaDaRiga,
     ordina: (a, b) => Number(b.ts) - Number(a.ts),
@@ -952,8 +959,9 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
   }, [])
 
   // — Comande dall'ombrellone —
-  const inviaComanda = useCallback((ombrellone: string, righe: RigaComanda[], note?: string, extra?: Pick<Comanda, 'origine' | 'cliente'>) => {
-    const totale = righe.reduce((s, r) => s + r.quantita * r.prezzoUnitario, 0)
+  const inviaComanda = useCallback((ombrellone: string, righe: RigaComanda[], note?: string, extra?: Pick<Comanda, 'origine' | 'cliente' | 'ritiro' | 'consegna'>) => {
+    const consegna = extra?.ritiro ? 0 : Math.max(0, extra?.consegna ?? 0)
+    const totale = righe.reduce((s, r) => s + r.quantita * r.prezzoUnitario, 0) + consegna
     const ora = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
     const comanda: Comanda = {
       id: nuovoId('CMD'),
@@ -966,6 +974,8 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
       origine: extra?.origine ?? 'bar',
       cliente: extra?.cliente,
       ts: Date.now(),
+      ritiro: extra?.ritiro || undefined,
+      consegna: consegna || undefined,
     }
     setComande((prev) => [comanda, ...prev])
     return comanda
@@ -1449,6 +1459,9 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
     setBozzaListino({})
   }, [scriviContenuto])
 
+  const impostaCostoConsegna = useCallback((euro: number) => {
+    scriviContenuto('consegna_ombrellone', () => ({ costo: Math.max(0, Math.round(euro * 100) / 100) }))
+  }, [scriviContenuto])
   const impostaCanalePrenotazione = useCallback((canale: CanalePrenotazione, attivo: boolean) => {
     scriviContenuto('canali', (v) => ({ ...CANALI_INIZIALI, ...(v as CanaliPrenotazione | undefined), [canale]: attivo }))
   }, [scriviContenuto])
@@ -1588,6 +1601,8 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
       listinoPubblicato,
       canaliPrenotazione,
       impostaCanalePrenotazione,
+      costoConsegna,
+      impostaCostoConsegna,
       homeSito,
       salvaHomeSito,
       prezziListino,
@@ -1709,6 +1724,8 @@ export function DemoDataProvider({ children, pagina }: { children: ReactNode; pa
       listinoPubblicato,
       canaliPrenotazione,
       impostaCanalePrenotazione,
+      costoConsegna,
+      impostaCostoConsegna,
       homeSito,
       salvaHomeSito,
       prezziListino,

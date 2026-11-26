@@ -252,6 +252,10 @@ export interface Comanda {
   ts?: number
   /** Incassata: esce dal conto aperto dell'ombrellone (Bar → Conti). */
   pagata?: boolean
+  /** Dall'app: il cliente passa a ritirarla al banco (niente consegna all'ombrellone, niente spese). */
+  ritiro?: boolean
+  /** Spese di consegna all'ombrellone (€), già comprese nel totale. */
+  consegna?: number
 }
 
 // — Comande del ristorante (sala → cucina) —
