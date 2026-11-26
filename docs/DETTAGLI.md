@@ -324,6 +324,12 @@ Personale, **Eventi**, **Sito** (gestionale) + **SitoAnteprima** (sito pubblico)
   petrolio). Eventi in card con foto grande e data in sovrimpressione. Titoli sans con parola `accento` in petrolio.
   Colori `carta/laguna/corallo/rosa/cielo` in `tailwind.config.js`. Form ristorante ed EventoModal restano quelli di `SitoAnteprima`.
 - **Ombrellone** = vecchia ComandApp (login demo, ordini, stato); la barra "Ordina" sta sopra la nav.
+- **Ritiro al banco** (nov 2026, migrazione 0036): sopra "Ordina" il cliente sceglie **All'ombrellone** (+ spese di consegna) o
+  **Ritiro al banco** (senza spese; scelta ricordata in `beachin.comandapp.ritiro`). `Comanda.ritiro` / `Comanda.consegna` (colonne
+  `ritiro`, `consegna` di `beachin.comande`, consegna già nel `totale`). Spese in `sito_contenuti` riga `consegna_ombrellone` `{costo}`
+  (default 1 €, `costoConsegna`/`impostaCostoConsegna`), modificabili in Bar → Listino da chi ha permesso `bar` 2 (policy "bar consegna").
+  Al bar `ComandaCard` mostra la fascia gialla "Ritiro al banco · non consegnare" e il tasto "Pronta al banco"; il cliente legge
+  "passa a ritirarlo al banco".
 - **Prenota** Ristorante/Eventi riusa `FormRistorante`, `EventoModal`, `Sospese` esportati da `SitoAnteprima` (stessi flussi
   del sito, rispetta `canaliPrenotazione`). `FormRistorante` ora parte da `config.oggi` (ristorante aperto tutto l'anno).
 - **News** (`notizie`: `pubblicaNotizia/modificaNotizia/eliminaNotizia`, `fissata` = in evidenza, foto su Storage) e

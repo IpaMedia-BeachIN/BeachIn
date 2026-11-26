@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
-  Umbrella, LogOut, Send, Check, ChefHat, Bell, ClipboardList, ShoppingBag, Newspaper, CalendarCheck,
+  Umbrella, LogOut, Send, Store, Check, ChefHat, Bell, ClipboardList, ShoppingBag, Newspaper, CalendarCheck,
   PartyPopper, Phone, Pin, MapPin, MessageCircle, Mail, Clock, Facebook, ChevronRight, UtensilsCrossed, Ticket,
   type LucideIcon,
 } from 'lucide-react'
@@ -389,7 +389,7 @@ function Login({ onEntra }: { onEntra: (u: Utente) => void }) {
 }
 
 function Area({ utente }: { utente: Utente }) {
-  const { comande, inviaComanda, articoliBar, sezioniBar } = useDemoData()
+  const { comande, inviaComanda, articoliBar, sezioniBar, costoConsegna } = useDemoData()
   const [tab, setTab] = useState<'ordina' | 'ordini'>('ordina')
   // stesso listino del gestionale (Bar → Listino): solo articoli disponibili, categorie nell'ordine scelto
   const articoli = useMemo(() => articoliBar.filter((a) => a.disponibile !== false), [articoliBar])
@@ -398,6 +398,10 @@ function Area({ utente }: { utente: Utente }) {
   const cat = scelta && categorie.some((c) => c.id === scelta) ? scelta : categorie[0]?.id
   const [qta, setQta] = useState<Record<string, number>>({})
   const [note, setNote] = useState('')
+  // ritiro al banco = senza spese di consegna; la scelta resta per i prossimi ordini
+  const [ritiro, setRitiroStato] = useState(() => { try { return localStorage.getItem('beachin.comandapp.ritiro') === '1' } catch { return false } })
+  const setRitiro = (v: boolean) => { setRitiroStato(v); try { localStorage.setItem('beachin.comandapp.ritiro', v ? '1' : '0') } catch { /* solo in memoria */ } }
+  const spese = ritiro ? 0 : costoConsegna
 
   const mie = comande.filter((c) => c.ombrellone === utente.ombrellone && c.origine === 'app')
   // "ding" quando una mia comanda diventa pronta
@@ -409,24 +413,24 @@ function Area({ utente }: { utente: Utente }) {
   }, [mie])
 
   const righe = articoli.filter((a) => qta[a.id]).map((a) => ({ articoloId: a.id, nome: a.nome, quantita: qta[a.id], prezzoUnitario: a.prezzoVendita }))
-  const totale = righe.reduce((s, r) => s + r.quantita * r.prezzoUnitario, 0)
+  const totale = righe.reduce((s, r) => s + r.quantita * r.prezzoUnitario, 0) + spese
   const pezzi = righe.reduce((s, r) => s + r.quantita, 0)
   const cambia = (id: string, d: number) => setQta((q) => { const v = Math.max(0, (q[id] ?? 0) + d); const n = { ...q }; if (v) n[id] = v; else delete n[id]; return n })
   // l'ordine resta 60 secondi sul telefono (il bar non lo vede): il cliente può correggerlo o annullarlo
-  const attesa = useOrdineInSospeso<{ qta: Record<string, number>; note: string; righe: typeof righe }>(`beachin.sospeso.ombrellone.${utente.ombrellone}`, (d) => {
-    inviaComanda(utente.ombrellone, d.righe, d.note, { origine: 'app', cliente: utente.nome })
+  const attesa = useOrdineInSospeso<{ qta: Record<string, number>; note: string; righe: typeof righe; ritiro?: boolean; consegna?: number }>(`beachin.sospeso.ombrellone.${utente.ombrellone}`, (d) => {
+    inviaComanda(utente.ombrellone, d.righe, d.note, { origine: 'app', cliente: utente.nome, ritiro: d.ritiro, consegna: d.consegna })
     ding(); setTab('ordini')
   })
   const invia = () => {
     if (!righe.length) return
-    attesa.metti({ qta, note, righe })
+    attesa.metti({ qta, note, righe, ritiro, consegna: spese })
     setQta({}); setNote('')
   }
   const modifica = () => {
     const d = attesa.riprendi()
     if (!d) return
     setQta((q) => { const n = { ...d.qta }; Object.entries(q).forEach(([id, v]) => { n[id] = (n[id] ?? 0) + v }); return n })
-    setNote((x) => x || d.note); setTab('ordina')
+    setNote((x) => x || d.note); if (d.ritiro !== undefined) setRitiro(d.ritiro); setTab('ordina')
   }
 
   const vai = (id: string) => { setCat(id); document.getElementById(`ombr-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }
@@ -435,7 +439,7 @@ function Area({ utente }: { utente: Utente }) {
   return (
     <PaginaMenu tema="ombrellone" className="-mx-4 -mt-4 px-4 pb-28 pt-4">
       <CopertinaMenu tema="ombrellone" compatta etichetta={<span className="inline-flex items-center gap-1"><Umbrella className="h-3.5 w-3.5" /> {utente.ombrellone}</span>}>
-        <p className="mt-1 text-sm text-white/85">Ciao {utente.nome}, te lo portiamo sotto l’ombrellone.</p>
+        <p className="mt-1 text-sm text-white/85">Ciao {utente.nome}, te lo portiamo sotto l’ombrellone o lo ritiri al banco.</p>
       </CopertinaMenu>
       <div className="my-4 flex gap-2 text-sm font-semibold">
         <button onClick={() => setTab('ordina')} className={cn('h-10 rounded-full px-4', tab === 'ordina' ? 'bg-[var(--acc)] text-white' : 'bg-[#FFFCF6] ring-1 ring-[#3B2A20]/10')}>Ordina</button>
@@ -460,6 +464,16 @@ function Area({ utente }: { utente: Utente }) {
           {pezzi > 0 && !attesa.sospeso && (
             <div className="fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-10 border-t border-[#3B2A20]/10 bg-[#F6EFE3] p-3">
               <div className="mx-auto max-w-md space-y-2 md:max-w-xl">
+                <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Come vuoi ricevere l'ordine">
+                  {([false, true] as const).map((v) => (
+                    <button key={String(v)} type="button" role="radio" aria-checked={ritiro === v} onClick={() => setRitiro(v)}
+                      className={cn('flex items-center gap-2 rounded-2xl px-3 py-2 text-left text-sm leading-tight', ritiro === v ? 'bg-[var(--acc)] text-white' : 'bg-white ring-1 ring-[#3B2A20]/15')}>
+                      {v ? <Store className="h-5 w-5 shrink-0" /> : <Umbrella className="h-5 w-5 shrink-0" />}
+                      <span><span className="block font-semibold">{v ? 'Ritiro al banco' : 'All’ombrellone'}</span>
+                        <span className="text-xs opacity-80">{v || !costoConsegna ? 'Senza spese' : `+ ${euroCent(costoConsegna)} consegna`}</span></span>
+                    </button>
+                  ))}
+                </div>
                 <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (es. senza ghiaccio)" className="h-10 w-full rounded-full border border-[#3B2A20]/15 bg-white px-4 text-sm" />
                 <button onClick={invia} className="flex h-12 w-full items-center justify-between rounded-full bg-[var(--acc)] px-5 font-semibold text-white shadow-lg">
                   <span className="inline-flex items-center gap-2"><ShoppingBag className="h-5 w-5" /> Ordina {pezzi} {pezzi === 1 ? 'articolo' : 'articoli'}</span>
@@ -495,9 +509,11 @@ function Area({ utente }: { utente: Utente }) {
                     )
                   })}
                 </div>
-                {c.stato === 'pronta' && <p className="mb-2 rounded-xl bg-acqua px-3 py-2 text-sm font-semibold">Il tuo ordine è pronto: arriva all'ombrellone {c.ombrellone}!</p>}
+                {c.ritiro && c.stato !== 'pronta' && <p className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-tenda/40 px-3 py-1 text-xs font-semibold"><Store className="h-3.5 w-3.5" /> Ritiro al banco</p>}
+                {c.stato === 'pronta' && <p className="mb-2 rounded-xl bg-acqua px-3 py-2 text-sm font-semibold">{c.ritiro ? 'Il tuo ordine è pronto: passa a ritirarlo al banco del bar!' : `Il tuo ordine è pronto: arriva all'ombrellone ${c.ombrellone}!`}</p>}
                 <ul className="space-y-0.5 text-sm text-profondo/75">
                   {c.righe.map((r) => <li key={r.articoloId} className="flex justify-between"><span>{r.quantita}× {r.nome}</span><span className="num">{euroCent(r.quantita * r.prezzoUnitario)}</span></li>)}
+                  {!!c.consegna && <li className="flex justify-between"><span>Consegna all’ombrellone</span><span className="num">{euroCent(c.consegna)}</span></li>}
                 </ul>
                 <p className="num mt-2 border-t border-calce-200 pt-2 text-right font-bold">{euroCent(c.totale)}</p>
               </div>
@@ -508,8 +524,8 @@ function Area({ utente }: { utente: Utente }) {
 
       {attesa.sospeso && (
         <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-20 flex justify-center p-3">
-          <OrdineInSospeso restanti={attesa.restanti} totale={attesa.sospeso.righe.reduce((x, r) => x + r.quantita * r.prezzoUnitario, 0)}
-            riepilogo={attesa.sospeso.righe.map((r) => `${r.quantita}× ${r.nome}`).join(' · ')}
+          <OrdineInSospeso restanti={attesa.restanti} totale={attesa.sospeso.righe.reduce((x, r) => x + r.quantita * r.prezzoUnitario, 0) + (attesa.sospeso.consegna ?? 0)}
+            riepilogo={(attesa.sospeso.ritiro ? 'Ritiro al banco · ' : '') + attesa.sospeso.righe.map((r) => `${r.quantita}× ${r.nome}`).join(' · ')}
             onModifica={modifica} onAnnulla={attesa.annulla} onInviaOra={attesa.inviaSubito} />
         </div>
       )}

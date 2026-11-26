@@ -129,6 +129,7 @@ function DettaglioComanda({ c, conOmbrellone }: { c: Comanda; conOmbrellone?: bo
         {c.origine === 'app' && <Smartphone className="h-3.5 w-3.5" />}
         <span className="font-semibold text-profondo">{c.ts ? format(c.ts, 'EEE d MMM', { locale: it }) + ' · ' : ''}{c.ora}</span>
         {conOmbrellone && <span>· Ombrellone {c.ombrellone}</span>}
+        {c.ritiro && <span className="font-semibold text-[#7A5A12]">· Ritiro al banco</span>}
         <span>· {c.origine === 'app' ? 'ComandApp' : 'banco'}{c.cliente ? ` · ${c.cliente}` : ''}</span>
         <span>· {etichettaStatoComanda[c.stato]}</span>
         <span className={cn('ml-auto rounded-full px-2 py-0.5 text-[11px] font-semibold', c.pagata ? 'bg-acqua/25 text-[#2F6B5C]' : 'bg-tenda/30 text-[#7A5A12]')}>{c.pagata ? 'Incassata' : 'Da incassare'}</span>
@@ -136,6 +137,7 @@ function DettaglioComanda({ c, conOmbrellone }: { c: Comanda; conOmbrellone?: bo
       {c.righe.map((r, i) => (
         <p key={r.articoloId + i} className="flex justify-between"><span>{r.quantita}× {r.nome}</span><span className="num">{euroCent(r.quantita * r.prezzoUnitario)}</span></p>
       ))}
+      {!!c.consegna && <p className="flex justify-between"><span>Consegna all’ombrellone</span><span className="num">{euroCent(c.consegna)}</span></p>}
       {c.note && <p className="text-xs italic text-profondo/60">Nota: {c.note}</p>}
       <p className="flex justify-between font-semibold text-profondo"><span>Totale comanda</span><span className="num">{euroCent(c.totale)}</span></p>
     </li>
@@ -244,6 +246,7 @@ function Listino() {
           <Button onClick={() => setCategorie(true)}><Tags className="h-4 w-4" /> Categorie</Button>
           <Button variante="primario" onClick={() => setModifica('nuovo')}><Plus className="h-4 w-4" /> Nuovo articolo</Button>
         </div>
+        <SpeseConsegna />
 
         {[...gruppi, ...(orfani.length ? [{ sez: { id: '', nome: 'Senza categoria' }, articoli: orfani }] : [])].map(({ sez, articoli }) => (
           <section key={sez.id || 'orfani'}>
@@ -289,6 +292,29 @@ function Listino() {
       {modifica && <ModificaArticolo articolo={modifica === 'nuovo' ? undefined : modifica} categoriaIniziale={filtro !== 'tutte' ? filtro : sezioniBar[0]?.id ?? ''} onChiudi={() => setModifica(undefined)} />}
       {categorie && <GestisciCategorie onChiudi={() => setCategorie(false)} />}
     </Card>
+  )
+}
+
+/** Spese di consegna all'ombrellone degli ordini dall'app clienti; il ritiro al banco resta sempre senza spese. */
+function SpeseConsegna() {
+  const { costoConsegna, impostaCostoConsegna } = useDemoData()
+  const [testo, setTesto] = useState(() => String(costoConsegna).replace('.', ','))
+  useEffect(() => { setTesto(String(costoConsegna).replace('.', ',')) }, [costoConsegna])
+  const salva = () => {
+    const v = Number(testo.replace(',', '.'))
+    if (Number.isFinite(v) && v >= 0) impostaCostoConsegna(v)
+    else setTesto(String(costoConsegna).replace('.', ','))
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg bg-calce/50 px-3 py-2 text-sm">
+      <Umbrella className="h-4 w-4 text-cabina" />
+      <span className="flex-1 text-profondo/75">Consegna all’ombrellone dall’app clienti <span className="text-xs text-profondo/50">(il ritiro al banco è senza spese)</span></span>
+      <label className="flex items-center gap-1">
+        <span className="text-profondo/60">€</span>
+        <input value={testo} inputMode="decimal" onChange={(e) => setTesto(e.target.value)} onBlur={salva} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+          className="num h-8 w-20 rounded-lg border border-calce-200 bg-white px-2 text-right" aria-label="Spese di consegna all'ombrellone" />
+      </label>
+    </div>
   )
 }
 
